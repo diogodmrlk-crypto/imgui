@@ -25,14 +25,13 @@ float g_fovRadius = 196.0f;
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = UIColor.clearColor;
-        self.currentTab = 1; // 1 = AIM, 2 = ESP, 3 = MISC
+        self.currentTab = 1;
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [self setupUI];
     }
     return self;
 }
 
-// Mantém o painel centralizado quando gira a tela
 - (void)layoutSubviews {
     [super layoutSubviews];
     self.panel.center = CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
@@ -42,7 +41,6 @@ float g_fovRadius = 196.0f;
     CGFloat pW = 300.0;
     CGFloat pH = 280.0;
 
-    // 1. PAINEL
     self.panel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, pH)];
     self.panel.center = self.center;
     self.panel.backgroundColor = [UIColor colorWithRed:0.05 green:0.02 blue:0.02 alpha:0.98];
@@ -54,7 +52,6 @@ float g_fovRadius = 196.0f;
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     [self.panel addGestureRecognizer:pan];
 
-    // 2. CABEÇALHO
     self.header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, 25)];
     self.header.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
     [self.panel addSubview:self.header];
@@ -73,11 +70,9 @@ float g_fovRadius = 196.0f;
     [closeBtn addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [self.header addSubview:closeBtn];
 
-    // 3. ÁREA DE CONTEÚDO
     self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 25, pW, pH - 60)];
     [self.panel addSubview:self.contentView];
 
-    // 4. BARRA DE ABAS
     self.tabBar = [[UIView alloc] initWithFrame:CGRectMake(0, pH - 35, pW, 35)];
     self.tabBar.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
     [self.panel addSubview:self.tabBar];
@@ -97,13 +92,11 @@ float g_fovRadius = 196.0f;
     }
     self.tabButtons = btns;
 
-    [self switchTab:self.tabButtons[0]]; // Inicia na AIM
+    [self switchTab:self.tabButtons[0]];
 }
 
 - (void)switchTab:(UIButton *)sender {
     self.currentTab = (int)sender.tag;
-    
-    // Atualiza a cor dos botões (Ativo fica vermelho)
     for (UIButton *btn in self.tabButtons) {
         btn.backgroundColor = (btn.tag == self.currentTab) ? [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1] : UIColor.clearColor;
     }
@@ -216,7 +209,6 @@ float g_fovRadius = 196.0f;
     [self.contentView addSubview:infoLbl];
 }
 
-// AÇÕES
 - (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
 - (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
 - (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
@@ -227,7 +219,7 @@ float g_fovRadius = 196.0f;
     g_streamMode = sender.isOn;
     UIWindow *win = self.window;
     if (g_streamMode) {
-        [win setValue:@YES forKey:@"_secure"]; // Hack pra sumir da gravação
+        [win setValue:@YES forKey:@"_secure"];
     } else {
         [win setValue:@NO forKey:@"_secure"];
     }
@@ -248,19 +240,18 @@ float g_fovRadius = 196.0f;
 // JANELA CUSTOMIZADA (Toques Passam pro Jogo)
 // ==========================================
 @interface PurpouWindow : UIWindow
-@property (nonatomic, weak) UIView *panelView;
+@property (nonatomic, assign) UIView *panelView; // 'assign' em vez de 'weak'
 @end
 
 @implementation PurpouWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hitView = [super hitTest:point withEvent:event];
     if (self.panelView && CGRectContainsPoint(self.panelView.frame, point)) {
-        return hitView; // Se tocar no painel, repassa o toque pra ele
+        return hitView;
     }
-    return nil; // Se tocar fora, joga o toque pro jogo
+    return nil;
 }
 
-// GATILHO DE 3 DEDOS (4 Toques)
 + (void)load {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTripleTap)];
