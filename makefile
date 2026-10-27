@@ -6,11 +6,10 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = PurpouPanel
 
-# Caminhos exatos dos arquivos que estão no teu repositório
-PurpouPanel_FILES = Tweak.xm imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_tables.cpp imgui/imgui_widgets.cpp imgui/backends/imgui_impl_metal.mm
+# Como os arquivos estão na raiz, tira o "imgui/" da frente
+PurpouPanel_FILES = Tweak.xm imgui.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp backends/imgui_impl_metal.mm
 
-# Frameworks e flags pro Metal e ImGui funcionarem no iOS
 PurpouPanel_FRAMEWORKS = UIKit Foundation QuartzCore Metal MetalKit
-PurpouPanel_CFLAGS = -Iimgui -Iimgui/backends -I. -DIMGUI_DEFINE_MATH_OPERATORS -DIMGUI_IMPL_METAL
+PurpouPanel_CFLAGS = -I. -Ibackends -DIMGUI_DEFINE_MATH_OPERATORS -DIMGUI_IMPL_METAL
 
 include $(THEOS_MAKE_PATH)/tweak.mk
