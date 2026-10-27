@@ -1,24 +1,22 @@
 // layout.h
 #import <UIKit/UIKit.h>
+#import <sys/utsname.h>
 
-// ==========================================
-// VARIÁVEIS GLOBAIS DO CHEAT
-// ==========================================
+// Variáveis globais que os hooks vão ler
 bool g_aimbotEnabled = false;
 bool g_espEnabled = false;
 bool g_silentAimEnabled = false;
 bool g_fovCircleEnabled = false;
+bool g_streamMode = false; 
 float g_fovRadius = 196.0f;
 
-// ==========================================
-// INTERFACE DO PAINEL
-// ==========================================
 @interface PurpouPanel : UIView
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UIView *header;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *tabBar;
 @property (nonatomic, assign) int currentTab;
+@property (nonatomic, strong) NSArray *tabButtons;
 @end
 
 @implementation PurpouPanel
@@ -27,17 +25,24 @@ float g_fovRadius = 196.0f;
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = UIColor.clearColor;
-        self.currentTab = 1; // 1 = AIM, 2 = ESP
+        self.currentTab = 1; // 1 = AIM, 2 = ESP, 3 = MISC
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [self setupUI];
     }
     return self;
 }
 
+// Mantém o painel centralizado quando gira a tela
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    self.panel.center = CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
+}
+
 - (void)setupUI {
     CGFloat pW = 300.0;
-    CGFloat pH = 260.0;
+    CGFloat pH = 280.0;
 
-    // 1. PAINEL (Fundo Preto, Borda Vermelha)
+    // 1. PAINEL
     self.panel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, pH)];
     self.panel.center = self.center;
     self.panel.backgroundColor = [UIColor colorWithRed:0.05 green:0.02 blue:0.02 alpha:0.98];
@@ -49,7 +54,7 @@ float g_fovRadius = 196.0f;
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     [self.panel addGestureRecognizer:pan];
 
-    // 2. CABEÇALHO (PURPOU DEV)
+    // 2. CABEÇALHO
     self.header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, 25)];
     self.header.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
     [self.panel addSubview:self.header];
@@ -72,31 +77,57 @@ float g_fovRadius = 196.0f;
     self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 25, pW, pH - 60)];
     [self.panel addSubview:self.contentView];
 
-    // 4. BARRA DE ABAS (Embaixo)
+    // 4. BARRA DE ABAS
     self.tabBar = [[UIView alloc] initWithFrame:CGRectMake(0, pH - 35, pW, 35)];
     self.tabBar.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
     [self.panel addSubview:self.tabBar];
 
-    NSArray *tabs = @[@"AIM", @"ESP"]; // Ordem pra ficar igual à foto
-    for (int i = 0; i < 2; i++) {
+    NSArray *tabs = @[@"AIM", @"ESP", @"MISC"];
+    NSMutableArray *btns = [NSMutableArray array];
+    for (int i = 0; i < 3; i++) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        btn.frame = CGRectMake((pW / 2) * i, 0, pW / 2, 35);
+        btn.frame = CGRectMake((pW / 3) * i, 0, pW / 3, 35);
         [btn setTitle:tabs[i] forState:UIControlStateNormal];
         [btn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         btn.titleLabel.font = [UIFont boldSystemFontOfSize:11];
         btn.tag = i + 1;
         [btn addTarget:self action:@selector(switchTab:) forControlEvents:UIControlEventTouchUpInside];
         [self.tabBar addSubview:btn];
+        [btns addObject:btn];
+    }
+    self.tabButtons = btns;
+
+    [self switchTab:self.tabButtons[0]]; // Inicia na AIM
+}
+
+- (void)switchTab:(UIButton *)sender {
+    self.currentTab = (int)sender.tag;
+    
+    // Atualiza a cor dos botões (Ativo fica vermelho)
+    for (UIButton *btn in self.tabButtons) {
+        btn.backgroundColor = (btn.tag == self.currentTab) ? [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1] : UIColor.clearColor;
     }
 
-    [self buildAimTab]; // Começa na aba AIM
+    if (self.currentTab == 1) [self buildAimTab];
+    else if (self.currentTab == 2) [self buildEspTab];
+    else [self buildMiscTab];
+}
+
+- (UISwitch *)createSwitchAtY:(CGFloat)y isOn:(BOOL)isOn action:(SEL)action {
+    UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(220, y, 51, 31)];
+    toggle.transform = CGAffineTransformMakeScale(0.7, 0.7);
+    toggle.onTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    toggle.thumbTintColor = UIColor.whiteColor;
+    toggle.on = isOn;
+    [toggle addTarget:self action:action forControlEvents:UIControlEventValueChanged];
+    [self.contentView addSubview:toggle];
+    return toggle;
 }
 
 - (void)buildAimTab {
     for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
-    
-    // Textos e Toggles
     NSArray *options = @[@"SILENT AIM", @"AIM SYSTEM", @"FOV CIRCLE"];
+
     for (int i = 0; i < options.count; i++) {
         CGFloat y = 15 + (i * 40);
         UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 180, 30)];
@@ -105,19 +136,11 @@ float g_fovRadius = 196.0f;
         lbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
         [self.contentView addSubview:lbl];
 
-        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(200, y, 51, 31)];
-        toggle.transform = CGAffineTransformMakeScale(0.7, 0.7);
-        toggle.onTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-        toggle.thumbTintColor = UIColor.whiteColor;
-        
-        if (i == 0) { toggle.on = g_silentAimEnabled; [toggle addTarget:self action:@selector(toggleSilentAim:) forControlEvents:UIControlEventValueChanged]; }
-        else if (i == 1) { toggle.on = g_aimbotEnabled; [toggle addTarget:self action:@selector(toggleAimbot:) forControlEvents:UIControlEventValueChanged]; }
-        else if (i == 2) { toggle.on = g_fovCircleEnabled; [toggle addTarget:self action:@selector(toggleFovCircle:) forControlEvents:UIControlEventValueChanged]; }
-        
-        [self.contentView addSubview:toggle];
+        if (i == 0) [self createSwitchAtY:y isOn:g_silentAimEnabled action:@selector(toggleSilentAim:)];
+        else if (i == 1) [self createSwitchAtY:y isOn:g_aimbotEnabled action:@selector(toggleAimbot:)];
+        else if (i == 2) [self createSwitchAtY:y isOn:g_fovCircleEnabled action:@selector(toggleFovCircle:)];
     }
 
-    // Textos Falsos (Target MIXED, Headshot rate)
     UILabel *targetLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 135, 200, 20)];
     targetLbl.text = @"Target: MIXED";
     targetLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
@@ -130,7 +153,6 @@ float g_fovRadius = 196.0f;
     headshotLbl.font = [UIFont systemFontOfSize:10];
     [self.contentView addSubview:headshotLbl];
 
-    // Slider FOV
     UILabel *sliderLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 185, 180, 20)];
     sliderLbl.text = @"FOV radius: 196";
     sliderLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
@@ -153,35 +175,63 @@ float g_fovRadius = 196.0f;
     NSArray *options = @[@"ESP MASTER", @"PLAYER BOX", @"TOP TRACER", @"HEALTH BAR", @"PLAYER NAME", @"DISTANCE", @"SKELETON"];
 
     for (int i = 0; i < options.count; i++) {
-        CGFloat y = 10 + (i * 28); // Mais compacto pra caber tudo
+        CGFloat y = 10 + (i * 30);
         UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 180, 20)];
         lbl.text = options[i];
         lbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
         lbl.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
         [self.contentView addSubview:lbl];
 
-        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(200, y - 5, 51, 31)];
-        toggle.transform = CGAffineTransformMakeScale(0.6, 0.6);
-        toggle.onTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-        toggle.thumbTintColor = UIColor.whiteColor;
-        toggle.on = g_espEnabled;
-        [toggle addTarget:self action:@selector(toggleEsp:) forControlEvents:UIControlEventValueChanged];
-        [self.contentView addSubview:toggle];
+        [self createSwitchAtY:y-5 isOn:g_espEnabled action:@selector(toggleEsp:)];
     }
 }
 
-- (void)switchTab:(UIButton *)sender {
-    self.currentTab = (int)sender.tag;
-    if (self.currentTab == 1) [self buildAimTab];
-    else [self buildEspTab];
+- (void)buildMiscTab {
+    for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
+    
+    struct utsname systemInfo;
+    uname(&systemInfo);
+    NSString *deviceModel = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
+    NSString *iosVersion = [[UIDevice currentDevice] systemVersion];
+    
+    UILabel *deviceLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 260, 30)];
+    deviceLbl.text = [NSString stringWithFormat:@"Device: %@ iOS %@", deviceModel, iosVersion];
+    deviceLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    deviceLbl.font = [UIFont boldSystemFontOfSize:11];
+    [self.contentView addSubview:deviceLbl];
+
+    UILabel *streamLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 70, 180, 30)];
+    streamLbl.text = @"MODE STREAM (GRAVAÇÃO)";
+    streamLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    streamLbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    [self.contentView addSubview:streamLbl];
+
+    [self createSwitchAtY:70 isOn:g_streamMode action:@selector(toggleStreamMode:)];
+    
+    UILabel *infoLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 120, 260, 60)];
+    infoLbl.text = @"Modo Stream esconde o painel de gravações de tela, mantendo as funções ativas.";
+    infoLbl.textColor = [UIColor grayColor];
+    infoLbl.font = [UIFont systemFontOfSize:10];
+    infoLbl.numberOfLines = 0;
+    [self.contentView addSubview:infoLbl];
 }
 
-// AÇÕES (AQUI O CHEAT É ATIVADO)
+// AÇÕES
 - (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
 - (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
 - (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
 - (void)toggleEsp:(UISwitch *)sender { g_espEnabled = sender.isOn; }
 - (void)fovChanged:(UISlider *)sender { g_fovRadius = sender.value; }
+
+- (void)toggleStreamMode:(UISwitch *)sender {
+    g_streamMode = sender.isOn;
+    UIWindow *win = self.window;
+    if (g_streamMode) {
+        [win setValue:@YES forKey:@"_secure"]; // Hack pra sumir da gravação
+    } else {
+        [win setValue:@NO forKey:@"_secure"];
+    }
+}
 
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self];
@@ -191,5 +241,40 @@ float g_fovRadius = 196.0f;
 
 - (void)closePanel {
     self.hidden = YES;
+}
+@end
+
+// ==========================================
+// JANELA CUSTOMIZADA (Toques Passam pro Jogo)
+// ==========================================
+@interface PurpouWindow : UIWindow
+@property (nonatomic, weak) UIView *panelView;
+@end
+
+@implementation PurpouWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hitView = [super hitTest:point withEvent:event];
+    if (self.panelView && CGRectContainsPoint(self.panelView.frame, point)) {
+        return hitView; // Se tocar no painel, repassa o toque pra ele
+    }
+    return nil; // Se tocar fora, joga o toque pro jogo
+}
+
+// GATILHO DE 3 DEDOS (4 Toques)
++ (void)load {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTripleTap)];
+        tap.numberOfTouchesRequired = 3;
+        tap.numberOfTapsRequired = 4;
+        [[UIApplication sharedApplication].keyWindow addGestureRecognizer:tap];
+    });
+}
+
++ (void)handleTripleTap {
+    UIWindow *win = nil;
+    for (UIWindow *w in [UIApplication sharedApplication].windows) {
+        if ([w isKindOfClass:[PurpouWindow class]]) { win = w; break; }
+    }
+    if (win) win.hidden = !win.hidden;
 }
 @end
