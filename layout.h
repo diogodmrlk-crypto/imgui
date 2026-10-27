@@ -2,12 +2,12 @@
 #import <UIKit/UIKit.h>
 #import <sys/utsname.h>
 
-// Variáveis globais que os hooks vão ler
+// Variáveis globais
 bool g_aimbotEnabled = false;
 bool g_espEnabled = false;
 bool g_silentAimEnabled = false;
 bool g_fovCircleEnabled = false;
-bool g_streamMode = false; 
+bool g_streamMode = false;
 float g_fovRadius = 196.0f;
 
 @interface PurpouPanel : UIView
@@ -192,35 +192,13 @@ float g_fovRadius = 196.0f;
     deviceLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
     deviceLbl.font = [UIFont boldSystemFontOfSize:11];
     [self.contentView addSubview:deviceLbl];
-
-    UILabel *streamLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 70, 180, 30)];
-    streamLbl.text = @"MODE STREAM (GRAVAÇÃO)";
-    streamLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-    streamLbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
-    [self.contentView addSubview:streamLbl];
-
-    [self createSwitchAtY:70 isOn:g_streamMode action:@selector(toggleStreamMode:)];
-    
-    UILabel *infoLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 120, 260, 60)];
-    infoLbl.text = @"Modo Stream esconde o painel visualmente. Não esconde de gravações do sistema.";
-    infoLbl.textColor = [UIColor grayColor];
-    infoLbl.font = [UIFont systemFontOfSize:10];
-    infoLbl.numberOfLines = 0;
-    [self.contentView addSubview:infoLbl];
 }
 
-// AÇÕES
 - (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
 - (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
 - (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
 - (void)toggleEsp:(UISwitch *)sender { g_espEnabled = sender.isOn; }
 - (void)fovChanged:(UISlider *)sender { g_fovRadius = sender.value; }
-
-// CORRIGIDO: Modo Stream agora só esconde o painel visualmente (sem crash)
-- (void)toggleStreamMode:(UISwitch *)sender {
-    g_streamMode = sender.isOn;
-    self.alpha = g_streamMode ? 0.0 : 1.0; 
-}
 
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self];
@@ -228,7 +206,6 @@ float g_fovRadius = 196.0f;
     [gesture setTranslation:CGPointZero inView:self];
 }
 
-// CORRIGIDO: Fecha o painel apenas (o gesto de 3 dedos pode reabrir)
 - (void)closePanel {
     self.hidden = YES;
 }
