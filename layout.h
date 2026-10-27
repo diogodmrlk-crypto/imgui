@@ -1,104 +1,195 @@
-#pragma once
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui.h"
-#include "imgui_internal.h"
+// layout.h
+#import <UIKit/UIKit.h>
 
-static bool init = true;
-static int activeTab = 1; // 1=AIM, 2=ESP, 3=FAKHER
-static ImVec4 panelColor = ImVec4(0.9f, 0.1f, 0.1f, 1.0f); 
+// ==========================================
+// VARIÁVEIS GLOBAIS DO CHEAT
+// ==========================================
+bool g_aimbotEnabled = false;
+bool g_espEnabled = false;
+bool g_silentAimEnabled = false;
+bool g_fovCircleEnabled = false;
+float g_fovRadius = 196.0f;
 
-void ApplyCustomTheme() {
-    ImGuiStyle& style = ImGui::GetStyle();
-    ImVec4* colors = style.Colors;
-    colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.02f, 0.02f, 0.95f);
-    colors[ImGuiCol_ChildBg] = ImVec4(0.05f, 0.02f, 0.02f, 0.95f);
-    colors[ImGuiCol_TitleBg] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
-    colors[ImGuiCol_Button] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
-    colors[ImGuiCol_ButtonHovered] = ImVec4(0.2f, 0.05f, 0.05f, 1.0f);
-    colors[ImGuiCol_CheckMark] = panelColor;
-    colors[ImGuiCol_FrameBg] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
-    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.2f, 0.05f, 0.05f, 1.0f);
-    colors[ImGuiCol_Text] = ImVec4(0.9f, 0.1f, 0.1f, 1.0f);
-    colors[ImGuiCol_Border] = panelColor;
-    style.WindowRounding = 0.0f;
-    style.FrameRounding = 2.0f;
-    style.WindowBorderSize = 1.5f;
-    style.WindowPadding = ImVec2(10, 10);
-    style.ItemSpacing = ImVec2(8, 8);
-}
+// ==========================================
+// INTERFACE DO PAINEL
+// ==========================================
+@interface PurpouPanel : UIView
+@property (nonatomic, strong) UIView *panel;
+@property (nonatomic, strong) UIView *header;
+@property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, strong) UIView *tabBar;
+@property (nonatomic, assign) int currentTab;
+@end
 
-bool ToggleButton(const char* label, bool* v) {
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems) return false;
-    ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    const ImGuiID id = window->GetID(label);
-    
-    const float height = 30.0f;
-    const ImVec2 pos = window->DC.CursorPos;
-    const ImRect bb(pos, ImVec2(pos.x + ImGui::GetContentRegionAvail().x, pos.y + height));
-    
-    ImGui::ItemSize(bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bb, id)) return false;
-    
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
-    if (pressed) { *v = !(*v); ImGui::MarkItemEdited(id); }
-    
-    ImGui::RenderText(ImVec2(bb.Min.x + 10, bb.Min.y + 7), label);
-    
-    ImU32 col_bg = *v ? ImGui::GetColorU32(panelColor) : ImGui::GetColorU32(ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    ImVec2 box_pos = ImVec2(bb.Max.x - 40, bb.Min.y + 5);
-    window->DrawList->AddRectFilled(box_pos, ImVec2(box_pos.x + 35, box_pos.y + 20), col_bg, 3.0f);
-    
-    float circle_x = *v ? box_pos.x + 25 : box_pos.x + 10;
-    window->DrawList->AddCircleFilled(ImVec2(circle_x, box_pos.y + 10), 6.0f, IM_COL32(255,255,255,255));
-    
-    return pressed;
-}
+@implementation PurpouPanel
 
-void menu() {
-    ApplyCustomTheme();
-    
-    ImGui::SetNextWindowSize(ImVec2(320, 260), ImGuiCond_Always);
-    if (ImGui::Begin("PURPOU DEV", &init, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar)) {
-        
-        if (ImGui::Button("ESP", ImVec2(95, 30))) activeTab = 2;
-        ImGui::SameLine();
-        if (ImGui::Button("AIM", ImVec2(95, 30))) activeTab = 1;
-        ImGui::SameLine();
-        if (ImGui::Button("FAKHER", ImVec2(95, 30))) activeTab = 3;
-        
-        ImGui::Separator();
-        
-        if (activeTab == 1) { // AIM
-            static bool silent = false, aimsys = false, fovcircle = false;
-            ToggleButton("SILENT AIM", &silent);
-            ToggleButton("AIM SYSTEM", &aimsys);
-            ImGui::Text("Target: MIXED");
-            ImGui::Text("Headshot rate: 75%%");
-            ToggleButton("FOV CIRCLE", &fovcircle);
-            
-            ImGui::Text("FOV radius: 196");
-            static float fov = 196.0f;
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.9f, 0.1f, 0.5f, 1.0f));
-            ImGui::SliderFloat("##fov", &fov, 0.0f, 360.0f, "");
-            ImGui::PopStyleColor();
-        }
-        else if (activeTab == 2) { // ESP
-            static bool master = false, box = false, tracer = false, health = false, name = false, dist = false, skel = false;
-            ToggleButton("ESP MASTER", &master);
-            ToggleButton("PLAYER BOX", &box);
-            ToggleButton("TOP TRACER", &tracer);
-            ToggleButton("HEALTH BAR", &health);
-            ToggleButton("PLAYER NAME", &name);
-            ToggleButton("DISTANCE", &dist);
-            ToggleButton("SKELETON", &skel);
-        }
-        else if (activeTab == 3) {
-            ImGui::Text("EM BREVE...");
-        }
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.currentTab = 1; // 1 = AIM, 2 = ESP
+        [self setupUI];
     }
-    ImGui::End();
+    return self;
 }
+
+- (void)setupUI {
+    CGFloat pW = 300.0;
+    CGFloat pH = 260.0;
+
+    // 1. PAINEL (Fundo Preto, Borda Vermelha)
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, pH)];
+    self.panel.center = self.center;
+    self.panel.backgroundColor = [UIColor colorWithRed:0.05 green:0.02 blue:0.02 alpha:0.98];
+    self.panel.layer.borderWidth = 1.5;
+    self.panel.layer.borderColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1].CGColor;
+    self.panel.clipsToBounds = YES;
+    [self addSubview:self.panel];
+
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+    [self.panel addGestureRecognizer:pan];
+
+    // 2. CABEÇALHO (PURPOU DEV)
+    self.header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pW, 25)];
+    self.header.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
+    [self.panel addSubview:self.header];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, pW - 30, 25)];
+    title.text = @"PURPOU DEV";
+    title.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    title.font = [UIFont boldSystemFontOfSize:11];
+    title.textAlignment = NSTextAlignmentCenter;
+    [self.header addSubview:title];
+
+    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeBtn.frame = CGRectMake(pW - 30, 0, 30, 25);
+    [closeBtn setTitle:@"X" forState:UIControlStateNormal];
+    [closeBtn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [closeBtn addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
+    [self.header addSubview:closeBtn];
+
+    // 3. ÁREA DE CONTEÚDO
+    self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 25, pW, pH - 60)];
+    [self.panel addSubview:self.contentView];
+
+    // 4. BARRA DE ABAS (Embaixo)
+    self.tabBar = [[UIView alloc] initWithFrame:CGRectMake(0, pH - 35, pW, 35)];
+    self.tabBar.backgroundColor = [UIColor colorWithRed:0.1 green:0.02 blue:0.02 alpha:1];
+    [self.panel addSubview:self.tabBar];
+
+    NSArray *tabs = @[@"AIM", @"ESP"]; // Ordem pra ficar igual à foto
+    for (int i = 0; i < 2; i++) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        btn.frame = CGRectMake((pW / 2) * i, 0, pW / 2, 35);
+        [btn setTitle:tabs[i] forState:UIControlStateNormal];
+        [btn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        btn.titleLabel.font = [UIFont boldSystemFontOfSize:11];
+        btn.tag = i + 1;
+        [btn addTarget:self action:@selector(switchTab:) forControlEvents:UIControlEventTouchUpInside];
+        [self.tabBar addSubview:btn];
+    }
+
+    [self buildAimTab]; // Começa na aba AIM
+}
+
+- (void)buildAimTab {
+    for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
+    
+    // Textos e Toggles
+    NSArray *options = @[@"SILENT AIM", @"AIM SYSTEM", @"FOV CIRCLE"];
+    for (int i = 0; i < options.count; i++) {
+        CGFloat y = 15 + (i * 40);
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 180, 30)];
+        lbl.text = options[i];
+        lbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+        lbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+        [self.contentView addSubview:lbl];
+
+        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(200, y, 51, 31)];
+        toggle.transform = CGAffineTransformMakeScale(0.7, 0.7);
+        toggle.onTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+        toggle.thumbTintColor = UIColor.whiteColor;
+        
+        if (i == 0) { toggle.on = g_silentAimEnabled; [toggle addTarget:self action:@selector(toggleSilentAim:) forControlEvents:UIControlEventValueChanged]; }
+        else if (i == 1) { toggle.on = g_aimbotEnabled; [toggle addTarget:self action:@selector(toggleAimbot:) forControlEvents:UIControlEventValueChanged]; }
+        else if (i == 2) { toggle.on = g_fovCircleEnabled; [toggle addTarget:self action:@selector(toggleFovCircle:) forControlEvents:UIControlEventValueChanged]; }
+        
+        [self.contentView addSubview:toggle];
+    }
+
+    // Textos Falsos (Target MIXED, Headshot rate)
+    UILabel *targetLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 135, 200, 20)];
+    targetLbl.text = @"Target: MIXED";
+    targetLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    targetLbl.font = [UIFont systemFontOfSize:10];
+    [self.contentView addSubview:targetLbl];
+
+    UILabel *headshotLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 155, 200, 20)];
+    headshotLbl.text = @"Headshot rate: 75%";
+    headshotLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    headshotLbl.font = [UIFont systemFontOfSize:10];
+    [self.contentView addSubview:headshotLbl];
+
+    // Slider FOV
+    UILabel *sliderLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 185, 180, 20)];
+    sliderLbl.text = @"FOV radius: 196";
+    sliderLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    sliderLbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    [self.contentView addSubview:sliderLbl];
+
+    UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(20, 210, 260, 20)];
+    slider.minimumValue = 0;
+    slider.maximumValue = 360;
+    slider.value = g_fovRadius;
+    slider.minimumTrackTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.5 alpha:1];
+    slider.maximumTrackTintColor = [UIColor darkGrayColor];
+    slider.thumbTintColor = UIColor.whiteColor;
+    [slider addTarget:self action:@selector(fovChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.contentView addSubview:slider];
+}
+
+- (void)buildEspTab {
+    for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
+    NSArray *options = @[@"ESP MASTER", @"PLAYER BOX", @"TOP TRACER", @"HEALTH BAR", @"PLAYER NAME", @"DISTANCE", @"SKELETON"];
+
+    for (int i = 0; i < options.count; i++) {
+        CGFloat y = 10 + (i * 28); // Mais compacto pra caber tudo
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 180, 20)];
+        lbl.text = options[i];
+        lbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+        lbl.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+        [self.contentView addSubview:lbl];
+
+        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(200, y - 5, 51, 31)];
+        toggle.transform = CGAffineTransformMakeScale(0.6, 0.6);
+        toggle.onTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+        toggle.thumbTintColor = UIColor.whiteColor;
+        toggle.on = g_espEnabled;
+        [toggle addTarget:self action:@selector(toggleEsp:) forControlEvents:UIControlEventValueChanged];
+        [self.contentView addSubview:toggle];
+    }
+}
+
+- (void)switchTab:(UIButton *)sender {
+    self.currentTab = (int)sender.tag;
+    if (self.currentTab == 1) [self buildAimTab];
+    else [self buildEspTab];
+}
+
+// AÇÕES (AQUI O CHEAT É ATIVADO)
+- (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
+- (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
+- (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
+- (void)toggleEsp:(UISwitch *)sender { g_espEnabled = sender.isOn; }
+- (void)fovChanged:(UISlider *)sender { g_fovRadius = sender.value; }
+
+- (void)handlePan:(UIPanGestureRecognizer *)gesture {
+    CGPoint translation = [gesture translationInView:self];
+    self.panel.center = CGPointMake(self.panel.center.x + translation.x, self.panel.center.y + translation.y);
+    [gesture setTranslation:CGPointZero inView:self];
+}
+
+- (void)closePanel {
+    self.hidden = YES;
+}
+@end
