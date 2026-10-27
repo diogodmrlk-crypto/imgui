@@ -320,7 +320,8 @@ void ImGui_ImplMetal_RenderDrawData(ImDrawData* draw_data, id<MTLCommandBuffer> 
 
 static void ImGui_ImplMetal_DestroyTexture(ImTextureData* tex)
 {
-    if (MetalTexture* backend_tex = (__bridge_transfer MetalTexture*)(tex->BackendUserData))
+    // CORRIGIDO AQUI: Removido o __bridge_transfer
+    if (MetalTexture* backend_tex = (__bridge MetalTexture*)(tex->BackendUserData))
     {
         IM_ASSERT(backend_tex.metalTexture == (__bridge id<MTLTexture>)(void*)(intptr_t)tex->TexID);
         backend_tex.metalTexture = nil;
@@ -363,7 +364,8 @@ void ImGui_ImplMetal_UpdateTexture(ImTextureData* tex)
         // Store identifiers
         tex->SetTexID((ImTextureID)(intptr_t)texture);
         tex->SetStatus(ImTextureStatus_OK);
-        tex->BackendUserData = (__bridge_retained void*)(backend_tex);
+        // CORRIGIDO AQUI: Removido o __bridge_retained
+        tex->BackendUserData = (__bridge void*)(backend_tex);
     }
     else if (tex->Status == ImTextureStatus_WantUpdates)
     {
