@@ -1,8 +1,8 @@
 #import <UIKit/UIKit.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
-#import "imgui.h" // <-- Mudou aqui
-#import "backends/imgui_impl_metal.h" // <-- Mudou aqui
+#import "imgui.h"
+#import "backends/imgui_impl_metal.h"
 #import "layout.h"
 
 static UIWindow *PPOverlayWindow;
@@ -20,14 +20,22 @@ static UIWindow *PPOverlayWindow;
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
         self.device = device;
         self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
-        self.clearColor = MTLClearColorMake(0, 0, 0, 0);
+        self.clearColor = MTLClearColorMake(0, 0, 0, 0); // Fundo transparente
         self.opaque = NO;
+        self.paused = NO;
         
         _commandQueue = [device newCommandQueue];
         
+        // Inicializa o ImGui
         ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        
+        // CRUCIAL: Carrega a fonte padrão do ImGui pro iOS (resolve o crash)
+        io.Fonts->AddFontDefault();
+        
         ImGui_ImplMetal_Init(device);
         
+        // Loop de renderização a 60fps
         CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(render)];
         [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
@@ -35,23 +43,26 @@ static UIWindow *PPOverlayWindow;
 }
 
 - (void)render {
-    MTLRenderPassDescriptor *desc = self.currentRenderPassDescriptor;
-    if (!desc) return;
+    @autoreleasepool {
+        MTLRenderPassDescriptor *desc = self.currentRenderPassDescriptor;
+        if (!desc) return;
 
-    id<MTLCommandBuffer> cmd = [_commandQueue commandBuffer];
-    id<MTLRenderCommandEncoder> enc = [cmd renderCommandEncoderWithDescriptor:desc];
-    
-    ImGui_ImplMetal_NewFrame(desc);
-    ImGui::NewFrame();
-    
-    menu(); 
-    
-    ImGui::Render();
-    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), cmd, enc);
-    
-    [enc endEncoding];
-    [cmd presentDrawable:self.currentDrawable];
-    [cmd commit];
+        id<MTLCommandBuffer> cmd = [_commandQueue commandBuffer];
+        id<MTLRenderCommandEncoder> enc = [cmd renderCommandEncoderWithDescriptor:desc];
+        
+        ImGui_ImplMetal_NewFrame(desc);
+        ImGui::NewFrame();
+        
+        // CHAMA A TUA FUNÇÃO DO LAYOUT.H
+        menu(); 
+        
+        ImGui::Render();
+        ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), cmd, enc);
+        
+        [enc endEncoding];
+        [cmd presentDrawable:self.currentDrawable];
+        [cmd commit];
+    }
 }
 @end
 
@@ -70,18 +81,23 @@ static void PPShowPanel(void) {
 
         PPOverlayWindow = [[UIWindow alloc] initWithWindowScene:activeScene];
         PPOverlayWindow.frame = activeScene.coordinateSpace.bounds;
-        PPOverlayWindow.windowLevel = UIWindowLevelStatusBar + 1;
+        
+        // Nível de alerta para ficar em cima do jogo, mas abaixo da status bar
+        PPOverlayWindow.windowLevel = UIWindowLevelAlert + 1;
         PPOverlayWindow.backgroundColor = UIColor.clearColor;
         
         UIViewController *vc = [UIViewController new];
         vc.view.backgroundColor = UIColor.clearColor;
         
         PPImGuiView *imguiView = [[PPImGuiView alloc] initWithFrame:PPOverlayWindow.bounds];
+        imguiView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [vc.view addSubview:imguiView];
         
         PPOverlayWindow.rootViewController = vc;
         PPOverlayWindow.hidden = NO;
-        [PPOverlayWindow makeKeyAndVisible];
+        
+        // NÃO USA makeKeyAndVisible (isso causava o travamento no jogo)
+        // Apenas deixa a janela visível por cima
     });
 }
 
