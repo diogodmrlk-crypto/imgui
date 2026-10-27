@@ -29,12 +29,27 @@ jobs:
           export THEOS=$HOME/theos
           mkdir -p $THEOS/sdks
           cd /tmp
-          # Link direto pra SDK do iOS 16.5 (repositório do xybp888)
-          curl -L -o sdk.tar.xz "https://github.com/xybp888/iOS-SDKs/releases/download/master/iPhoneOS16.5.sdk.tar.xz"
-          # Extrai o SDK e joga na pasta do Theos
-          tar -xf sdk.tar.xz -C $THEOS/sdks/
-          # Verifica se a pasta existe
+          
+          # Tenta baixar várias versões até uma dar certo
+          for version in 16.5 16.4 15.6 15.0 14.5; do
+            echo "Tentando baixar SDK do iOS $version..."
+            curl -L -s -f -o sdk.tar.xz "https://github.com/theos/sdks/releases/download/master/iPhoneOS${version}.sdk.tar.xz"
+            
+            # Se o arquivo tiver mais de 1MB, o download deu certo
+            if [ -f sdk.tar.xz ] && [ $(stat -c%s sdk.tar.xz) -gt 1000000 ]; then
+              echo "Download do SDK $version concluído!"
+              tar -xf sdk.tar.xz -C $THEOS/sdks/
+              rm sdk.tar.xz
+              break
+            fi
+          done
+
+          # Verifica se a pasta ficou vazia
           ls -la $THEOS/sdks/
+          if [ ! -d "$THEOS/sdks/iPhoneOS16.5.sdk" ] && [ ! -d "$THEOS/sdks/iPhoneOS15.6.sdk" ]; then
+            echo "ERRO: Nenhum SDK foi encontrado."
+            exit 1
+          fi
 
       - name: Compile
         run: |
