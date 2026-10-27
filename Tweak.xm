@@ -4,7 +4,7 @@
 #import "layout.h"
 
 // ==========================================
-// OFFSETS DO ROBLOX (OS QUE VOCÊ MANDOU)
+// OFFSETS DO ROBLOX
 // ==========================================
 uintptr_t BaseAddress = 0;
 uintptr_t FakeDataModel = 0;
@@ -14,7 +14,6 @@ uintptr_t VisualEngine = 0;
 #define OFF_VisualEngine 0x83f0a08
 #define OFF_RealDataModel 0x1f8
 #define OFF_Workspace 0x158
-#define OFF_CurrentCamera 0x4b8
 #define OFF_ViewMatrix 0x1b0
 #define OFF_ChildrenStart 0x78
 #define OFF_ChildrenEnd 0x8
@@ -68,43 +67,32 @@ float ReadFloat(uintptr_t address) {
 - (void)drawRect:(CGRect)rect {
     if (!g_espEnabled) return;
     
-    // Pega o Base Address
     if (BaseAddress == 0) {
         BaseAddress = GetBaseAddress();
         if (BaseAddress == 0) return;
     }
     
-    // Pega o Fake Data Model
     if (FakeDataModel == 0) {
         FakeDataModel = ReadPtr(BaseAddress + OFF_FakeDataModel);
         if (FakeDataModel == 0) return;
     }
     
-    // Pega o Real Data Model
     uintptr_t RealDataModel = ReadPtr(FakeDataModel + OFF_RealDataModel);
     if (RealDataModel == 0) return;
     
-    // Pega o Visual Engine
     if (VisualEngine == 0) {
         VisualEngine = ReadPtr(BaseAddress + OFF_VisualEngine);
         if (VisualEngine == 0) return;
     }
     
-    // View Matrix (Matriz da câmera)
     uintptr_t viewMatrixAddr = VisualEngine + OFF_ViewMatrix;
     float viewMatrix[16];
     vm_size_t size = sizeof(viewMatrix);
     vm_read_overwrite(mach_task_self(), viewMatrixAddr, size, (vm_address_t)viewMatrix, &size);
     
-    // Pega a Workspace e a Câmera (pra saber a tela)
-    uintptr_t Workspace = ReadPtr(RealDataModel + OFF_Workspace);
-    uintptr_t CurrentCamera = ReadPtr(Workspace + OFF_CurrentCamera);
-    
-    // Local Player
     uintptr_t LocalPlayer = ReadPtr(RealDataModel + OFF_LocalPlayer);
     if (LocalPlayer == 0) return;
     
-    // Pega os players
     uintptr_t childrenStart = ReadPtr(RealDataModel + OFF_ChildrenStart);
     uintptr_t childrenEnd = ReadPtr(RealDataModel + OFF_ChildrenEnd);
     
@@ -135,13 +123,11 @@ float ReadFloat(uintptr_t address) {
         float posY = ReadFloat(primitive + OFF_Position + 4);
         float posZ = ReadFloat(primitive + OFF_Position + 8);
         
-        // Aqui a gente faz o cálculo WorldToScreen
-        // (A matemática de projeção da câmera)
         CGFloat screenWidth = [UIScreen mainScreen].bounds.size.width;
         CGFloat screenHeight = [UIScreen mainScreen].bounds.size.height;
         
         float w = viewMatrix[3] * posX + viewMatrix[7] * posY + viewMatrix[11] * posZ + viewMatrix[15];
-        if (w < 0.01f) continue; // Atrás da câmera
+        if (w < 0.01f) continue;
         
         float x = viewMatrix[0] * posX + viewMatrix[4] * posY + viewMatrix[8] * posZ + viewMatrix[12];
         float y = viewMatrix[1] * posX + viewMatrix[5] * posY + viewMatrix[9] * posZ + viewMatrix[13];
@@ -149,7 +135,6 @@ float ReadFloat(uintptr_t address) {
         float screenX = (screenWidth / 2) * (1 + x / w);
         float screenY = (screenHeight / 2) * (1 - y / w);
         
-        // Desenha a caixa em volta do inimigo
         if (screenX > 0 && screenX < screenWidth && screenY > 0 && screenY < screenHeight) {
             CGRect rect = CGRectMake(screenX - 20, screenY - 40, 40, 80);
             CGContextStrokeRect(ctx, rect);
@@ -199,13 +184,11 @@ static void PPShowPanel(void) {
         UIViewController *vc = [UIViewController new];
         vc.view.backgroundColor = UIColor.clearColor;
         
-        // Adiciona o overlay do ESP (por baixo do painel)
         espOverlay = [[ESPOverlay alloc] initWithFrame:PPOverlayWindow.bounds];
         espOverlay.backgroundColor = UIColor.clearColor;
         espOverlay.userInteractionEnabled = NO;
         [vc.view addSubview:espOverlay];
         
-        // Adiciona o painel
         PurpouPanel *panel = [[PurpouPanel alloc] initWithFrame:PPOverlayWindow.bounds];
         [vc.view addSubview:panel];
         
@@ -213,7 +196,6 @@ static void PPShowPanel(void) {
         ((PurpouWindow *)PPOverlayWindow).panelView = panel.panel;
         PPOverlayWindow.hidden = NO;
         
-        // Loop de atualização do ESP (chama o drawRect 60x por segundo)
         CADisplayLink *link = [CADisplayLink displayLinkWithTarget:espOverlay selector:@selector(setNeedsDisplay)];
         [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     });
