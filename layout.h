@@ -2,28 +2,18 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "imgui_internal.h"
-#include <string>
-#include <chrono>
-#include <map>
 
-#ifndef OBFUSCATE
-#define OBFUSCATE(str) str
-#endif
-
-// Variáveis de Estado
-bool init = true;
-static bool isMenuOpen = true;
-static int activeTab = 1; // 1 = AIM, 2 = ESP
-static ImVec4 panelColor = ImVec4(0.9f, 0.1f, 0.1f, 1.0f); // Vermelho
-static bool temaEscuro = true; // Tema escuro
+static bool init = true;
+static int activeTab = 1; // 1=AIM, 2=ESP, 3=FAKHER
+static ImVec4 panelColor = ImVec4(0.9f, 0.1f, 0.1f, 1.0f); 
 
 void ApplyCustomTheme() {
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
-    
     colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.02f, 0.02f, 0.95f);
     colors[ImGuiCol_ChildBg] = ImVec4(0.05f, 0.02f, 0.02f, 0.95f);
     colors[ImGuiCol_TitleBg] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
     colors[ImGuiCol_Button] = ImVec4(0.1f, 0.02f, 0.02f, 1.0f);
     colors[ImGuiCol_ButtonHovered] = ImVec4(0.2f, 0.05f, 0.05f, 1.0f);
     colors[ImGuiCol_CheckMark] = panelColor;
@@ -31,7 +21,6 @@ void ApplyCustomTheme() {
     colors[ImGuiCol_FrameBgHovered] = ImVec4(0.2f, 0.05f, 0.05f, 1.0f);
     colors[ImGuiCol_Text] = ImVec4(0.9f, 0.1f, 0.1f, 1.0f);
     colors[ImGuiCol_Border] = panelColor;
-
     style.WindowRounding = 0.0f;
     style.FrameRounding = 2.0f;
     style.WindowBorderSize = 1.5f;
@@ -48,13 +37,13 @@ bool ToggleButton(const char* label, bool* v) {
     
     const float height = 30.0f;
     const ImVec2 pos = window->DC.CursorPos;
-    const ImRect total_bb(pos, ImVec2(pos.x + ImGui::GetContentRegionAvail().x, pos.y + height));
+    const ImRect bb(pos, ImVec2(pos.x + ImGui::GetContentRegionAvail().x, pos.y + height));
     
-    ImGui::ItemSize(total_bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(total_bb, id)) return false;
+    ImGui::ItemSize(bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bb, id)) return false;
     
     bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
+    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
     if (pressed) { *v = !(*v); ImGui::MarkItemEdited(id); }
     
     ImGui::RenderText(ImVec2(bb.Min.x + 10, bb.Min.y + 7), label);
@@ -75,12 +64,11 @@ void menu() {
     ImGui::SetNextWindowSize(ImVec2(320, 260), ImGuiCond_Always);
     if (ImGui::Begin("PURPOU DEV", &init, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar)) {
         
-        // Abas
-        if (ImGui::Button("ESP", ImVec2(100, 30))) activeTab = 2;
+        if (ImGui::Button("ESP", ImVec2(95, 30))) activeTab = 2;
         ImGui::SameLine();
-        if (ImGui::Button("AIM", ImVec2(100, 30))) activeTab = 1;
+        if (ImGui::Button("AIM", ImVec2(95, 30))) activeTab = 1;
         ImGui::SameLine();
-        if (ImGui::Button("FAKHER", ImVec2(100, 30))) activeTab = 3;
+        if (ImGui::Button("FAKHER", ImVec2(95, 30))) activeTab = 3;
         
         ImGui::Separator();
         
