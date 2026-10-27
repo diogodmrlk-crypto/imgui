@@ -578,9 +578,7 @@ bool CustomCheckbox12(const char* label, bool* v) {
 // SLIDER FOV NO ESTILO DA SEGUNDA IMAGEM
 bool CustomSliderFloatFOV(const char* label, float* v, float v_min, float v_max, const char* format = "%.1f") {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-    
+    if (window->SkipItems) return false;
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
@@ -591,9 +589,52 @@ bool CustomSliderFloatFOV(const char* label, float* v, float v_min, float v_max,
     const ImRect total_bb(frame_bb.Min, ImVec2(frame_bb.Max.x + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), frame_bb.Max.y));
     
     ImGui::ItemSize(total_bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(total_bb, id, &frame_bb))
-        return false;
-        
+    if (!ImGui::ItemAdd(total_bb, id, &frame_bb)) return false;
+    const bool hovered = ImGui::IsMouseHoveringRect(frame_bb.Min, frame_bb.Max);
+    
+    ImU32 frame_col = temaEscuro ? ImGui::GetColorU32(ImVec4(0.15f, 0.18f, 0.22f, 1.00f)) : ImGui::GetColorU32(ImVec4(1.00f, 1.00f, 1.00f, 1.00f));
+    window->DrawList->AddRectFilled(frame_bb.Min, frame_bb.Max, frame_col, BORDER_ROUNDING);
+    
+    ImU32 border_col = temaEscuro ? ImGui::GetColorU32(ImVec4(0.25f, 0.28f, 0.35f, 1.0f)) : ImGui::GetColorU32(ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
+    window->DrawList->AddRect(frame_bb.Min, frame_bb.Max, border_col, BORDER_ROUNDING, 0, BORDER_SIZE);
+    
+    float t = (*v - v_min) / (v_max - v_min);
+    ImRect fill_bb = frame_bb;
+    fill_bb.Max.x = ImLerp(fill_bb.Min.x, fill_bb.Max.x, t);
+    if (t > 0.0f) window->DrawList->AddRectFilled(fill_bb.Min, fill_bb.Max, ImGui::GetColorU32(panelColor), BORDER_ROUNDING);
+    
+    char value_buf[64];
+    ImFormatString(value_buf, IM_ARRAYSIZE(value_buf), format, *v);
+    ImU32 text_col = temaEscuro ? ImGui::GetColorU32(ImVec4(0.80f, 0.83f, 0.87f, 1.0f)) : ImGui::GetColorU32(ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
+    ImVec2 text_size = ImGui::CalcTextSize(value_buf);
+    ImVec2 text_pos = ImVec2(frame_bb.Min.x + (frame_bb.Max.x - frame_bb.Min.x) * 0.5f - text_size.x * 0.5f, frame_bb.Min.y + (frame_bb.Max.y - frame_bb.Min.y) * 0.5f - text_size.y * 0.5f);
+    window->DrawList->AddText(text_pos, text_col, value_buf);
+    
+    if (label_size.x > 0.0f) {
+        if (temaEscuro) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.80f, 0.83f, 0.87f, 1.0f));
+        else ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
+        ImGui::RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x + 5.0f, frame_bb.Min.y + (frame_bb.Max.y - frame_bb.Min.y) * 0.5f - label_size.y * 0.5f), label);
+        ImGui::PopStyleColor();
+    }
+    
+    if (hovered && g.IO.MouseClicked[0]) {
+        ImGui::SetActiveID(id, window);
+        ImGui::SetFocusID(id, window);
+        ImGui::FocusWindow(window);
+    }
+    
+    if (g.ActiveId == id) {
+        if (g.IO.MouseDown[0]) {
+            const float mouse_pos_x = g.IO.MousePos.x;
+            const float normalized_pos = ImClamp((mouse_pos_x - frame_bb.Min.x) / (frame_bb.Max.x - frame_bb.Min.x), 0.0f, 1.0f);
+            *v = v_min + normalized_pos * (v_max - v_min);
+            return true;
+        } else {
+            ImGui::ClearActiveID();
+        }
+    }
+    return false;
+}
     // Correção do hovered
     const bool hovered = ImGui::IsMouseHoveringRect(frame_bb.Min, frame_bb.Max);
     
