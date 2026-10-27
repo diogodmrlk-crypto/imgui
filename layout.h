@@ -202,27 +202,24 @@ float g_fovRadius = 196.0f;
     [self createSwitchAtY:70 isOn:g_streamMode action:@selector(toggleStreamMode:)];
     
     UILabel *infoLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 120, 260, 60)];
-    infoLbl.text = @"Modo Stream esconde o painel de gravações de tela, mantendo as funções ativas.";
+    infoLbl.text = @"Modo Stream esconde o painel visualmente. Não esconde de gravações do sistema.";
     infoLbl.textColor = [UIColor grayColor];
     infoLbl.font = [UIFont systemFontOfSize:10];
     infoLbl.numberOfLines = 0;
     [self.contentView addSubview:infoLbl];
 }
 
+// AÇÕES
 - (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
 - (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
 - (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
 - (void)toggleEsp:(UISwitch *)sender { g_espEnabled = sender.isOn; }
 - (void)fovChanged:(UISlider *)sender { g_fovRadius = sender.value; }
 
+// CORRIGIDO: Modo Stream agora só esconde o painel visualmente (sem crash)
 - (void)toggleStreamMode:(UISwitch *)sender {
     g_streamMode = sender.isOn;
-    UIWindow *win = self.window;
-    if (g_streamMode) {
-        [win setValue:@YES forKey:@"_secure"];
-    } else {
-        [win setValue:@NO forKey:@"_secure"];
-    }
+    self.alpha = g_streamMode ? 0.0 : 1.0; 
 }
 
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
@@ -231,41 +228,8 @@ float g_fovRadius = 196.0f;
     [gesture setTranslation:CGPointZero inView:self];
 }
 
+// CORRIGIDO: Fecha o painel apenas (o gesto de 3 dedos pode reabrir)
 - (void)closePanel {
     self.hidden = YES;
-}
-@end
-
-// ==========================================
-// JANELA CUSTOMIZADA (Toques Passam pro Jogo)
-// ==========================================
-@interface PurpouWindow : UIWindow
-@property (nonatomic, assign) UIView *panelView; // 'assign' em vez de 'weak'
-@end
-
-@implementation PurpouWindow
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-    UIView *hitView = [super hitTest:point withEvent:event];
-    if (self.panelView && CGRectContainsPoint(self.panelView.frame, point)) {
-        return hitView;
-    }
-    return nil;
-}
-
-+ (void)load {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTripleTap)];
-        tap.numberOfTouchesRequired = 3;
-        tap.numberOfTapsRequired = 4;
-        [[UIApplication sharedApplication].keyWindow addGestureRecognizer:tap];
-    });
-}
-
-+ (void)handleTripleTap {
-    UIWindow *win = nil;
-    for (UIWindow *w in [UIApplication sharedApplication].windows) {
-        if ([w isKindOfClass:[PurpouWindow class]]) { win = w; break; }
-    }
-    if (win) win.hidden = !win.hidden;
 }
 @end
