@@ -29,8 +29,12 @@ jobs:
           export THEOS=$HOME/theos
           mkdir -p $THEOS/sdks
           cd /tmp
-          curl -L -o sdk.tar.xz "https://github.com/xybp888/iOS-SDKs/releases/download/master/iPhoneOS16.5.sdk.tar.xz" || true
-          tar -xf sdk.tar.xz -C $THEOS/sdks/ || true
+          # Link direto pra SDK do iOS 16.5 (repositório do xybp888)
+          curl -L -o sdk.tar.xz "https://github.com/xybp888/iOS-SDKs/releases/download/master/iPhoneOS16.5.sdk.tar.xz"
+          # Extrai o SDK e joga na pasta do Theos
+          tar -xf sdk.tar.xz -C $THEOS/sdks/
+          # Verifica se a pasta existe
+          ls -la $THEOS/sdks/
 
       - name: Compile
         run: |
