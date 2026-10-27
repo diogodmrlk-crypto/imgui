@@ -6,6 +6,7 @@
 #import "layout.h"
 
 static UIWindow *PPOverlayWindow;
+static id<MTLDevice> g_device = nil;
 
 @interface PPImGuiView : MTKView
 @end
@@ -14,28 +15,18 @@ static UIWindow *PPOverlayWindow;
     id<MTLCommandQueue> _commandQueue;
 }
 
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
+- (instancetype)initWithFrame:(CGRect)frame device:(id<MTLDevice>)device {
+    self = [super initWithFrame:frame device:device];
     if (self) {
-        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-        self.device = device;
         self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
-        self.clearColor = MTLClearColorMake(0, 0, 0, 0); // Fundo transparente
+        self.clearColor = MTLClearColorMake(0, 0, 0, 0);
         self.opaque = NO;
         self.paused = NO;
         
         _commandQueue = [device newCommandQueue];
         
-        // Inicializa o ImGui
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        
-        // CRUCIAL: Carrega a fonte padrão do ImGui pro iOS (resolve o crash)
-        io.Fonts->AddFontDefault();
-        
         ImGui_ImplMetal_Init(device);
         
-        // Loop de renderização a 60fps
         CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(render)];
         [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
@@ -53,7 +44,6 @@ static UIWindow *PPOverlayWindow;
         ImGui_ImplMetal_NewFrame(desc);
         ImGui::NewFrame();
         
-        // CHAMA A TUA FUNÇÃO DO LAYOUT.H
         menu(); 
         
         ImGui::Render();
@@ -70,6 +60,18 @@ static void PPShowPanel(void) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (PPOverlayWindow) return;
 
+        // 1. Cria o contexto do ImGui e do Metal ANTES de tudo
+        if (!ImGui::GetCurrentContext()) {
+            ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO();
+            io.Fonts->AddFontDefault(); // Fonte nativa do ImGui (sem crash)
+            io.IniFilename = NULL;      // Não tenta salvar .ini no iOS
+        }
+
+        if (!g_device) {
+            g_device = MTLCreateSystemDefaultDevice();
+        }
+
         UIWindowScene *activeScene = nil;
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
             if ([scene isKindOfClass:[UIWindowScene class]] && scene.activationState == UISceneActivationStateForegroundActive) {
@@ -81,29 +83,26 @@ static void PPShowPanel(void) {
 
         PPOverlayWindow = [[UIWindow alloc] initWithWindowScene:activeScene];
         PPOverlayWindow.frame = activeScene.coordinateSpace.bounds;
-        
-        // Nível de alerta para ficar em cima do jogo, mas abaixo da status bar
-        PPOverlayWindow.windowLevel = UIWindowLevelAlert + 1;
+        PPOverlayWindow.windowLevel = UIWindowLevelNormal + 1; // Abaixo do status bar e dos alertas
         PPOverlayWindow.backgroundColor = UIColor.clearColor;
         
         UIViewController *vc = [UIViewController new];
         vc.view.backgroundColor = UIColor.clearColor;
         
-        PPImGuiView *imguiView = [[PPImGuiView alloc] initWithFrame:PPOverlayWindow.bounds];
+        PPImGuiView *imguiView = [[PPImGuiView alloc] initWithFrame:PPOverlayWindow.bounds device:g_device];
         imguiView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [vc.view addSubview:imguiView];
         
         PPOverlayWindow.rootViewController = vc;
         PPOverlayWindow.hidden = NO;
-        
-        // NÃO USA makeKeyAndVisible (isso causava o travamento no jogo)
-        // Apenas deixa a janela visível por cima
+        // Sem makeKeyAndVisible. Só joga por cima.
     });
 }
 
 %ctor {
     @autoreleasepool {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+        // Delay maior pra garantir que o jogo terminou de carregar a engine
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)),
             dispatch_get_main_queue(), ^{ PPShowPanel(); });
     }
 }
