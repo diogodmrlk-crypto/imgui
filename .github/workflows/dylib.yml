@@ -1,54 +1,66 @@
-name: Build Dylib Purpou
+name: Build PurpouPanel
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  build-dylib:
-    runs-on: ubuntu-latest
+  build:
+    name: Compilar dylib
+    runs-on: ubuntu-22.04
+
     steps:
-      - name: Checkout
+      - name: Baixar o projeto
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Atualizar pacotes do Ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get install -y make git curl xz-utils clang
+          sudo apt-get install -y \
+            build-essential \
+            fakeroot \
+            rsync \
+            curl \
+            perl \
+            zip \
+            git \
+            libxml2 \
+            libtinfo6 \
+            libz3-dev \
+            libplist-utils
 
-      - name: Install Theos
-        run: |
-          export THEOS=$HOME/theos
-          git clone --recursive https://github.com/theos/theos.git $THEOS
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-          echo "$HOME/theos/bin" >> $GITHUB_PATH
+      - name: Preparar Theos e SDKs (Automático)
+        uses: Randomblock1/theos-action@v1
 
-      - name: Install SDK (Método Oficial do Theos)
+      - name: Compilar projeto
         run: |
-          export THEOS=$HOME/theos
-          # O próprio Theos tem um script pra baixar os SDKs
-          cd $THEOS/bin
-          ./install-sdk
-          
-          # Se o comando acima não existir, tenta o script alternativo da comunidade:
-          if [ ! -d "$THEOS/sdks/iPhoneOS16.5.sdk" ]; then
-             git clone --depth 1 https://github.com/theos/sdks.git /tmp/theos-sdks
-             cp -r /tmp/theos-sdks/*.sdk $THEOS/sdks/ 2>/dev/null || true
-          fi
-          
-          ls -la $THEOS/sdks/
-
-      - name: Compile
-        run: |
-          export THEOS=$HOME/theos
-          export PATH=$THEOS/bin:$PATH
-          make clean
           make package FINALPACKAGE=1
 
-      - name: Upload Dylib
+      - name: Extrair a biblioteca
+        run: |
+          set -eu
+          mkdir -p dist/unpacked
+
+          DEB="$(find packages -type f -name '*.deb' | head -n 1)"
+          test -n "$DEB"
+
+          dpkg-deb -x "$DEB" dist/unpacked
+
+          DYLIB="$(find dist/unpacked -type f -name 'PurpouPanel.dylib' | head -n 1)"
+          test -n "$DYLIB"
+
+          cp "$DYLIB" dist/PurpouPanel.dylib
+          cp "$DEB" dist/PurpouPanel.deb
+
+      - name: Disponibilizar arquivos
         uses: actions/upload-artifact@v4
         with:
-          name: PurpouPanel-Dylib
-          path: .theos/obj/arm64/PurpouPanel.dylib
+          name: PurpouPanel-build
+          path: dist/PurpouPanel.*
           if-no-files-found: error
