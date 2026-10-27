@@ -1,0 +1,9 @@
+Package: com.ferrao.purpoucheats
+Name: Purpou Panel
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Purpou Panel UI
+Maintainer: Ferrao
+Author: Ferrao
+Section: Tweaks
+Depends: mobilesubstrate
