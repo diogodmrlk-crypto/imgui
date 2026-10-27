@@ -1,13 +1,12 @@
 #import <UIKit/UIKit.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
-#import "imgui/imgui.h"
-#import "imgui/backends/imgui_impl_metal.h"
+#import "imgui.h" // <-- Mudou aqui
+#import "backends/imgui_impl_metal.h" // <-- Mudou aqui
 #import "layout.h"
 
 static UIWindow *PPOverlayWindow;
 
-// View que desenha o ImGui na tela
 @interface PPImGuiView : MTKView
 @end
 
@@ -21,7 +20,7 @@ static UIWindow *PPOverlayWindow;
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
         self.device = device;
         self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
-        self.clearColor = MTLClearColorMake(0, 0, 0, 0); // Fundo transparente
+        self.clearColor = MTLClearColorMake(0, 0, 0, 0);
         self.opaque = NO;
         
         _commandQueue = [device newCommandQueue];
@@ -45,7 +44,7 @@ static UIWindow *PPOverlayWindow;
     ImGui_ImplMetal_NewFrame(desc);
     ImGui::NewFrame();
     
-    menu(); // Chama o menu do teu layout.h
+    menu(); 
     
     ImGui::Render();
     ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), cmd, enc);
