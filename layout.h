@@ -2,12 +2,9 @@
 #import <UIKit/UIKit.h>
 #import <sys/utsname.h>
 
-// Variáveis globais
 bool g_aimbotEnabled = false;
 bool g_espEnabled = false;
-bool g_silentAimEnabled = false;
-bool g_fovCircleEnabled = false;
-bool g_streamMode = false;
+bool g_executorEnabled = false; // Toggle do Executor
 float g_fovRadius = 196.0f;
 
 @interface PurpouPanel : UIView
@@ -128,45 +125,13 @@ float g_fovRadius = 196.0f;
         lbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
         lbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
         [self.contentView addSubview:lbl];
-
-        if (i == 0) [self createSwitchAtY:y isOn:g_silentAimEnabled action:@selector(toggleSilentAim:)];
-        else if (i == 1) [self createSwitchAtY:y isOn:g_aimbotEnabled action:@selector(toggleAimbot:)];
-        else if (i == 2) [self createSwitchAtY:y isOn:g_fovCircleEnabled action:@selector(toggleFovCircle:)];
+        [self createSwitchAtY:y isOn:g_aimbotEnabled action:@selector(toggleAimbot:)];
     }
-
-    UILabel *targetLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 135, 200, 20)];
-    targetLbl.text = @"Target: MIXED";
-    targetLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-    targetLbl.font = [UIFont systemFontOfSize:10];
-    [self.contentView addSubview:targetLbl];
-
-    UILabel *headshotLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 155, 200, 20)];
-    headshotLbl.text = @"Headshot rate: 75%";
-    headshotLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-    headshotLbl.font = [UIFont systemFontOfSize:10];
-    [self.contentView addSubview:headshotLbl];
-
-    UILabel *sliderLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 185, 180, 20)];
-    sliderLbl.text = @"FOV radius: 196";
-    sliderLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-    sliderLbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
-    [self.contentView addSubview:sliderLbl];
-
-    UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(20, 210, 260, 20)];
-    slider.minimumValue = 0;
-    slider.maximumValue = 360;
-    slider.value = g_fovRadius;
-    slider.minimumTrackTintColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.5 alpha:1];
-    slider.maximumTrackTintColor = [UIColor darkGrayColor];
-    slider.thumbTintColor = UIColor.whiteColor;
-    [slider addTarget:self action:@selector(fovChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.contentView addSubview:slider];
 }
 
 - (void)buildEspTab {
     for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
-    NSArray *options = @[@"ESP MASTER", @"PLAYER BOX", @"TOP TRACER", @"HEALTH BAR", @"PLAYER NAME", @"DISTANCE", @"SKELETON"];
-
+    NSArray *options = @[@"ESP MASTER", @"PLAYER BOX", @"TOP TRACER"];
     for (int i = 0; i < options.count; i++) {
         CGFloat y = 10 + (i * 30);
         UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(20, y, 180, 20)];
@@ -174,7 +139,6 @@ float g_fovRadius = 196.0f;
         lbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
         lbl.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
         [self.contentView addSubview:lbl];
-
         [self createSwitchAtY:y-5 isOn:g_espEnabled action:@selector(toggleEsp:)];
     }
 }
@@ -182,23 +146,38 @@ float g_fovRadius = 196.0f;
 - (void)buildMiscTab {
     for (UIView *v in self.contentView.subviews) [v removeFromSuperview];
     
-    struct utsname systemInfo;
-    uname(&systemInfo);
-    NSString *deviceModel = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
-    NSString *iosVersion = [[UIDevice currentDevice] systemVersion];
+    UILabel *execLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 180, 30)];
+    execLbl.text = @"EXECUTOR";
+    execLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
+    execLbl.font = [UIFont boldSystemFontOfSize:11];
+    [self.contentView addSubview:execLbl];
     
-    UILabel *deviceLbl = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 260, 30)];
-    deviceLbl.text = [NSString stringWithFormat:@"Device: %@ iOS %@", deviceModel, iosVersion];
-    deviceLbl.textColor = [UIColor colorWithRed:0.9 green:0.1 blue:0.1 alpha:1];
-    deviceLbl.font = [UIFont boldSystemFontOfSize:11];
-    [self.contentView addSubview:deviceLbl];
+    [self createSwitchAtY:20 isOn:g_executorEnabled action:@selector(toggleExecutor:)];
 }
 
-- (void)toggleSilentAim:(UISwitch *)sender { g_silentAimEnabled = sender.isOn; }
 - (void)toggleAimbot:(UISwitch *)sender { g_aimbotEnabled = sender.isOn; }
-- (void)toggleFovCircle:(UISwitch *)sender { g_fovCircleEnabled = sender.isOn; }
 - (void)toggleEsp:(UISwitch *)sender { g_espEnabled = sender.isOn; }
-- (void)fovChanged:(UISlider *)sender { g_fovRadius = sender.value; }
+- (void)toggleExecutor:(UISwitch *)sender { 
+    g_executorEnabled = sender.isOn; 
+    
+    if (g_executorEnabled) {
+        // Se ativou, mostra a tela do executor
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Executor" message:@"Digite seu script:" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+            textField.placeholder = @"loadstring...";
+        }];
+        
+        UIAlertAction *exec = [UIAlertAction actionWithTitle:@"Executar" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSString *script = alert.textFields.firstObject.text;
+            NSLog(@"[EXECUTOR] Script: %@", script);
+            // A chamada pra injetar no jogo viria aqui
+        }];
+        
+        [alert addAction:exec];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
+        [[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+    }
+}
 
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self];
